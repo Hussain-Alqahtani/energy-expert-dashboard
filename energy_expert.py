@@ -6,7 +6,7 @@ from prophet import Prophet
 import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
+from langchain_community.vectorstores import Chroma
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from streamlit_option_menu import option_menu
@@ -179,7 +179,7 @@ class InsightGenerator:
             google_api_key=GOOGLE_API_KEY
         )
         
-        vector_store = FAISS.from_texts(texts, embeddings)
+        vector_store = Chroma.from_texts(texts, embeddings)
         llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash",
             google_api_key=GOOGLE_API_KEY,
