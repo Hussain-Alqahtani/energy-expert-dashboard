@@ -168,6 +168,14 @@ class InsightGenerator:
         
         return "\n".join(context)
 
+    class InsightGenerator:
+    def __init__(self, df):
+        self.df = df
+        
+    def generate_context(self, filtered_df):
+        # Your existing generate_context method stays the same
+        pass
+
     def initialize_qa_chain(self):
         """Initialize the QA chain with enhanced context"""
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
@@ -193,33 +201,33 @@ class InsightGenerator:
             retriever=vector_store.as_retriever(),
         )
 
-def get_analysis(self, question, filtered_df, appliances, cities, date_range):
-    """Generate analysis based on the question and filtered data."""
-    try:
-        # Initialize chain
-        qa_chain = self.initialize_qa_chain()
-        
-        # Create prompt
-        context_prompt = f"""
-        For cities: {', '.join(cities)}
-        Date range: {date_range[0]} to {date_range[1]}
-        Analyzing appliances: {', '.join(appliances)}
-        
-        Question: {question}
-        
-        Please provide detailed analysis focusing on:
-        1. Specific patterns in the data
-        2. Energy usage trends
-        3. Actionable recommendations
-        4. Comparative insights between cities/appliances where relevant
-        """
-        
-        # Get response
-        response = qa_chain.run(context_prompt)
-        
-        return response
-    except Exception as e:
-        raise Exception(f"Analysis generation failed: {str(e)}")
+    def get_analysis(self, question, filtered_df, appliances, cities, date_range):
+        """Generate analysis based on the question and filtered data."""
+        try:
+            # Initialize chain
+            qa_chain = self.initialize_qa_chain()
+            
+            # Create prompt
+            context_prompt = f"""
+            For cities: {', '.join(cities)}
+            Date range: {date_range[0]} to {date_range[1]}
+            Analyzing appliances: {', '.join(appliances)}
+            
+            Question: {question}
+            
+            Please provide detailed analysis focusing on:
+            1. Specific patterns in the data
+            2. Energy usage trends
+            3. Actionable recommendations
+            4. Comparative insights between cities/appliances where relevant
+            """
+            
+            # Get response
+            response = qa_chain.run(context_prompt)
+            
+            return response
+        except Exception as e:
+            raise Exception(f"Analysis generation failed: {str(e)}")
         
 
 def main():
