@@ -12,7 +12,7 @@ from langchain.prompts import PromptTemplate
 from streamlit_option_menu import option_menu
 
 # Configuration
-GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+GOOGLE_API_KEY = "AIzaSyCppzDCO2eepEd3qLF7oWpI3Nkz4bW-TGc"
 genai.configure(api_key=GOOGLE_API_KEY)
 
 class DataLoader:
@@ -49,7 +49,7 @@ class DataLoader:
                 labels=['Very Cold', 'Cold', 'Moderate', 'Warm', 'Hot']
             )
             
-            return df
+            return df[df['outlier'] == 0]
             
         except Exception as e:
             st.error(f"Error loading data: {str(e)}")
@@ -82,6 +82,7 @@ class DataFilter:
         except Exception as e:
             st.error(f"Error applying filters: {str(e)}")
             return df
+
 
 class InsightGenerator:
     def __init__(self, df):
@@ -168,14 +169,6 @@ class InsightGenerator:
         
         return "\n".join(context)
 
-    class InsightGenerator:
-    def __init__(self, df):
-        self.df = df
-        
-    def generate_context(self, filtered_df):
-        # Your existing generate_context method stays the same
-        pass
-
     def initialize_qa_chain(self):
         """Initialize the QA chain with enhanced context"""
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
@@ -191,8 +184,7 @@ class InsightGenerator:
             model="gemini-1.5-flash",
             google_api_key=GOOGLE_API_KEY,
             temperature=0.1,
-            max_output_tokens=2048,
-            convert_system_message_to_human=True
+            max_output_tokens=2048
         )
         
         return RetrievalQA.from_chain_type(
@@ -204,31 +196,32 @@ class InsightGenerator:
     def get_analysis(self, question, filtered_df, appliances, cities, date_range):
         """Generate analysis based on the question and filtered data."""
         try:
-            # Initialize chain
-            qa_chain = self.initialize_qa_chain()
+            # Ensure context is generated for the filtered data
+            context = self.generate_context(filtered_df)
+
+            # Explicitly include city details in the query
+            city_details = ", ".join(cities) if cities else "all cities"
+            query = f"""
+            Analyze energy usage for {', '.join(appliances)} in {city_details} 
+            from {date_range[0]} to {date_range[1]}.
             
-            # Create prompt
-            context_prompt = f"""
-            For cities: {', '.join(cities)}
-            Date range: {date_range[0]} to {date_range[1]}
-            Analyzing appliances: {', '.join(appliances)}
+            Relevant data and patterns:
+            {context}
             
-            Question: {question}
+            User question: {question}
             
-            Please provide detailed analysis focusing on:
-            1. Specific patterns in the data
-            2. Energy usage trends
-            3. Actionable recommendations
-            4. Comparative insights between cities/appliances where relevant
+            Please provide a detailed analysis focusing on the specific question asked.
+            Include exact numbers, months, and years when available.
+            Highlight trends for the specified city or cities.
             """
             
-            # Get response
-            response = qa_chain.run(context_prompt)
+            # Initialize QA chain
+            qa_chain = self.initialize_qa_chain()
+            response = qa_chain.run(query)
             
             return response
         except Exception as e:
             raise Exception(f"Analysis generation failed: {str(e)}")
-        
 
 def main():
     st.set_page_config(layout="wide")
@@ -248,8 +241,8 @@ def main():
         # City filter: Show all cities as default
         cities = st.multiselect(
             "Select Cities", 
-            options=sorted(df['city'].unique()),
-            default=sorted(df['city'].unique())
+            options=sorted(df['city'].unique()),  # Available options
+            default=sorted(df['city'].unique())   # Default to all cities
         )
 
         # Get the dynamic date range based on selected cities
@@ -258,15 +251,15 @@ def main():
         # Date range picker
         date_range = st.date_input(
             "Date Range",
-            value=(min_date, max_date),
+            value=(min_date, max_date),  # Default range for selected cities
             key="date_range"
         )
         
         # Appliance filter: Show all appliances as default
         appliances = st.multiselect(
             "Select Appliances",
-            options=sorted(df['appliance'].unique()),
-            default=sorted(df['appliance'].unique())
+            options=sorted(df['appliance'].unique()),  # Available options
+            default=sorted(df['appliance'].unique())   # Default to all appliances
         )
     
     # Apply filters
@@ -278,17 +271,17 @@ def main():
     if not filtered_df.empty:
         # Tabs for different sections
         tabs = st.tabs([
-            "Overview and Key Insights",
-            "Energy Usage Trends",
-            "Outliers Analysis",
-            "AI Insights"
+        "Overview and Key Insights",
+        "Energy Usage Trends",
+        "Outliers Analysis",
+        "AI Insights"
         ])
         
         # Overview and Key Insights Section
         with tabs[0]:
             st.header("Overview and Key Insights")
 
-            # KPI Cards
+            # KPI Cards (Row 1)
             st.markdown("### **_Key Metrics_**")
             kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
             with kpi_col1:
@@ -304,30 +297,39 @@ def main():
                 total_data_points = len(filtered_df)
                 st.metric("Data Points", total_data_points)
 
-            # Monthly and Appliance Insights
+            # Second Row Charts
             st.markdown("### **_Monthly and Appliance Insights_**")
             row2_col1, row2_col2, row2_col3 = st.columns([1, 1, 1])
 
-            # Grid Usage Chart
+
+            # Chart 1: Grid Usage (Last Month vs Previous Month)
             with row2_col1:
+                # Determine the unique months in the filtered dataset
                 unique_months = filtered_df["date"].dt.to_period("M").unique()
+                
                 if len(unique_months) >= 2:
+                    # Sort months and select the last two
                     sorted_months = sorted(unique_months)
                     last_month = sorted_months[-1]
                     prev_month = sorted_months[-2]
                     
+                    # Filter data for the last two months
                     last_month_data = filtered_df[filtered_df["date"].dt.to_period("M") == last_month]
                     prev_month_data = filtered_df[filtered_df["date"].dt.to_period("M") == prev_month]
                     
+                    # Extract day of the month for a common X-axis
                     last_month_data["day_of_month"] = last_month_data["date"].dt.day
                     prev_month_data["day_of_month"] = prev_month_data["date"].dt.day
 
+                    # Label the months for the legend
                     last_month_data["label"] = f"{last_month.start_time.strftime('%B %Y')}"
                     prev_month_data["label"] = f"{prev_month.start_time.strftime('%B %Y')}"
 
+                    # Combine data for plotting
                     combined_data = pd.concat([last_month_data, prev_month_data])
                     combined_data = combined_data.groupby(["day_of_month", "label"])["usage"].sum().reset_index()
 
+                    # Create the line chart
                     fig_usage = px.line(
                         combined_data,
                         x="day_of_month",
@@ -345,15 +347,149 @@ def main():
                     st.plotly_chart(fig_usage, use_container_width=True)
                 else:
                     st.warning("Not enough data to compare two months. Please adjust your date range.")
+                
+            # Chart 2: Top 5 Appliances by Total Monthly Usage
+            with row2_col2:
+                appliance_usage = filtered_df[filtered_df["appliance"] != "grid"].groupby("appliance")["usage"].sum().reset_index()
+                top_appliances = appliance_usage.sort_values(by="usage", ascending=False).head(5)
+                fig_appliances = px.bar(
+                    top_appliances,
+                    x="usage",
+                    y="appliance",
+                    orientation="h",
+                    title="Top 5 Appliances (Monthly Avg Usage)",
+                    labels={"appliance": "Appliance", "usage": "Total Usage (kWh)"},
+                )
+                fig_appliances.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
+                st.plotly_chart(fig_appliances, use_container_width=True)
 
-            # Rest of your visualization code remains the same...
+            # Chart 3: Weekend Effect on Grid Consumption
+            with row2_col3:
+                weekend_usage = filtered_df.groupby("is_weekend")["usage"].mean().reset_index()
+                fig_weekend = px.bar(
+                    weekend_usage,
+                    x="is_weekend",
+                    y="usage",
+                    title="Weekend Effect on Grid Consumption",
+                    labels={"is_weekend": "Weekend", "usage": "Daily Avg Usage (kWh)"},
+                )
+                fig_weekend.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
+                st.plotly_chart(fig_weekend, use_container_width=True)
 
-        # AI Insights Tab
+            # Third and Fourth Row Chart
+            st.markdown("### **_Total Grid Consumption by City (Smoothed)_**")
+            filtered_df["day"] = filtered_df["date"].dt.date
+            daily_city_usage = (
+                filtered_df[filtered_df["appliance"] == "grid"]
+                .groupby(["day", "city"])["usage"]
+                .mean()
+                .reset_index()
+            )
+
+            fig_city_usage = px.line(
+                daily_city_usage,
+                x="day",
+                y="usage",
+                color="city",
+                title="Total Grid Consumption by City (Daily Average)",
+                labels={"day": "Date", "usage": "Daily Avg Usage (kWh)", "city": "City"},
+            )
+            fig_city_usage.update_layout(
+                xaxis=dict(title="Date"),
+                yaxis=dict(title="Daily Avg Usage (kWh)"),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+            )
+            st.plotly_chart(fig_city_usage, use_container_width=True)
+
+
+        # Energy Usage Trends
+        with tabs[1]:
+            st.header("Energy Usage Trends")
+
+            # Hourly Usage Line Plot (Subplots by Appliance)
+            st.markdown("### **_Hourly Usage Trends_**")
+
+            # Filter data for the selected appliances
+            hourly_filtered_df = filtered_df[filtered_df["appliance"].isin(appliances)]
+
+            # Create subplots for each appliance
+            from plotly.subplots import make_subplots
+            import plotly.graph_objects as go
+
+            # Create a subplot figure with one row per appliance
+            fig_hourly = make_subplots(
+                rows=len(appliances),
+                cols=1,
+                shared_xaxes=True,
+                vertical_spacing=0.05,  # Compact spacing between subplots
+                subplot_titles=[f"Hourly Usage for {appliance.capitalize()}" for appliance in appliances]
+            )
+
+            for idx, appliance in enumerate(appliances):
+                appliance_data = hourly_filtered_df[hourly_filtered_df["appliance"] == appliance]
+                avg_hourly_usage = appliance_data.groupby("hour")["usage"].mean().reset_index()
+
+                fig_hourly.add_trace(
+                    go.Scatter(
+                        x=avg_hourly_usage["hour"],
+                        y=avg_hourly_usage["usage"],
+                        mode="lines",
+                        name=appliance.capitalize()
+                    ),
+                    row=idx + 1,
+                    col=1
+                )
+
+            fig_hourly.update_layout(
+                height=250 * len(appliances),  # Adjust height dynamically
+                title="Hourly Usage Trends by Appliance",
+                xaxis=dict(title="Hour of Day", tickmode="linear", dtick=1),  # Increment by 1
+                yaxis_title="Average Usage (kWh)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                showlegend=False  # Disable legend since titles show appliance names
+            )
+
+            st.plotly_chart(fig_hourly, use_container_width=True, key="hourly_chart_subplots")
+
+            # Heatmap: Appliances vs Usage
+            st.markdown("### **_Appliances vs Usage Heatmap_**")
+
+            # Adjust X-axis based on the global filtered data
+            heatmap_data = filtered_df.groupby(["appliance", "hour"])["usage"].mean().reset_index()
+
+            # Create the heatmap
+            fig_heatmap = px.density_heatmap(
+                heatmap_data,
+                x="hour",
+                y="appliance",
+                z="usage",
+                color_continuous_scale="Viridis",
+                title=f"Appliances vs Hour (Usage)",
+                labels={"hour": "Hour", "appliance": "Appliance", "usage": "Avg Usage (kWh)"},
+            )
+            fig_heatmap.update_layout(
+                xaxis=dict(title="Hour of Day", tickmode="linear", dtick=1),  # Increment by 1
+                yaxis=dict(title="Appliance"),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                height=800  # Make the heatmap larger
+            )
+
+            # Display the heatmap
+            st.plotly_chart(fig_heatmap, use_container_width=True, key="heatmap_chart") 
+        
+        with tabs[2]:
+            st.header("Outliers Analysis")
+        
+        
+        # AI Insights Section
         with tabs[3]:
             st.header("AI Insights")
             question = st.text_input(
                 "Ask about your energy usage:",
-                "what is energy consumed by aircomp in august 2018?"
+                "What are the main patterns and saving opportunities?"
             )
             if st.button("Generate Response"):
                 if question:
@@ -372,6 +508,6 @@ def main():
                             st.error(str(e))
                 else:
                     st.warning("Please enter a question before generating a response.")
-
+                    
 if __name__ == "__main__":
     main()
