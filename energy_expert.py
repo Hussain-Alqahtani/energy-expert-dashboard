@@ -183,14 +183,15 @@ class InsightGenerator:
             model="gemini-1.5-flash",
             google_api_key=GOOGLE_API_KEY,
             temperature=0.1,
-            max_output_tokens=2048
+            max_output_tokens=2048,
+            convert_system_message_to_human=True  # Added this line
         )
         
         return RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
             retriever=vector_store.as_retriever(),
-        )
+        )   
 
     def get_analysis(self, question, filtered_df, appliances, cities, date_range):
         """Generate analysis based on the question and filtered data."""
