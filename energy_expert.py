@@ -12,7 +12,7 @@ from langchain.prompts import PromptTemplate
 from streamlit_option_menu import option_menu
 
 # Configuration
-GOOGLE_API_KEY = "AIzaSyCppzDCO2eepEd3qLF7oWpI3Nkz4bW-TGc"
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=GOOGLE_API_KEY)
 
 class DataLoader:
