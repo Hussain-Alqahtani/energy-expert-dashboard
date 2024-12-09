@@ -170,16 +170,7 @@ class InsightGenerator:
         return "\n".join(context)
 
     def initialize_qa_chain(self):
-        """Initialize the QA chain with enhanced context"""
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-        texts = text_splitter.split_text(self.generate_context(self.df))
-        
-        embeddings = GoogleGenerativeAIEmbeddings(
-            model="models/embedding-001",
-            google_api_key=GOOGLE_API_KEY
-        )
-        
-        vector_store = Chroma.from_texts(texts, embeddings)
+        """Initialize the QA chain with conversation memory"""
         llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash",
             google_api_key=GOOGLE_API_KEY,
@@ -187,39 +178,29 @@ class InsightGenerator:
             max_output_tokens=2048
         )
         
-        return RetrievalQA.from_chain_type(
-            llm=llm,
-            chain_type="stuff",
-            retriever=vector_store.as_retriever(),
-        )
+        # Create a custom prompt
+        prompt = f"""
+        You are an energy usage analysis expert. Analyze this data:
+        
+        {self.generate_context(self.df)}
+        
+        Provide detailed insights about energy usage patterns, trends, and potential optimization opportunities.
+        Focus on actionable recommendations and clear data-driven observations.
+        """
+        
+        return lambda question: llm.invoke(prompt + "\n\nQuestion: " + question)
 
-    def get_analysis(self, question, filtered_df, appliances, cities, date_range):
+def get_analysis(self, question, filtered_df, appliances, cities, date_range):
         """Generate analysis based on the question and filtered data."""
         try:
-            # Ensure context is generated for the filtered data
-            context = self.generate_context(filtered_df)
-
-            # Explicitly include city details in the query
-            city_details = ", ".join(cities) if cities else "all cities"
-            query = f"""
-            Analyze energy usage for {', '.join(appliances)} in {city_details} 
-            from {date_range[0]} to {date_range[1]}.
-            
-            Relevant data and patterns:
-            {context}
-            
-            User question: {question}
-            
-            Please provide a detailed analysis focusing on the specific question asked.
-            Include exact numbers, months, and years when available.
-            Highlight trends for the specified city or cities.
-            """
-            
-            # Initialize QA chain
+            # Initialize chain
             qa_chain = self.initialize_qa_chain()
-            response = qa_chain.run(query)
             
-            return response
+            # Get response
+            response = qa_chain(question)
+            
+            # Return the content
+            return response.content if hasattr(response, 'content') else str(response)
         except Exception as e:
             raise Exception(f"Analysis generation failed: {str(e)}")
 
