@@ -184,36 +184,42 @@ class InsightGenerator:
             google_api_key=GOOGLE_API_KEY,
             temperature=0.1,
             max_output_tokens=2048,
-            convert_system_message_to_human=True  # Added this line
+            convert_system_message_to_human=True
         )
         
         return RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
             retriever=vector_store.as_retriever(),
-        )   
+        )
 
-    def get_analysis(self, question, filtered_df, appliances, cities, date_range):
-        """Generate analysis based on the question and filtered data."""
-        try:
-            # Initialize chain
-            qa_chain = self.initialize_qa_chain()
-            
-            # Create prompt
-            context_prompt = f"""
-            For cities: {', '.join(cities)}
-            Date range: {date_range[0]} to {date_range[1]}
-            Analyzing appliances: {', '.join(appliances)}
-            
-            Question: {question}
-            """
-            
-            # Get response
-            response = qa_chain.run(context_prompt)
-            
-            return response
-        except Exception as e:
-            raise Exception(f"Analysis generation failed: {str(e)}")
+def get_analysis(self, question, filtered_df, appliances, cities, date_range):
+    """Generate analysis based on the question and filtered data."""
+    try:
+        # Initialize chain
+        qa_chain = self.initialize_qa_chain()
+        
+        # Create prompt
+        context_prompt = f"""
+        For cities: {', '.join(cities)}
+        Date range: {date_range[0]} to {date_range[1]}
+        Analyzing appliances: {', '.join(appliances)}
+        
+        Question: {question}
+        
+        Please provide detailed analysis focusing on:
+        1. Specific patterns in the data
+        2. Energy usage trends
+        3. Actionable recommendations
+        4. Comparative insights between cities/appliances where relevant
+        """
+        
+        # Get response
+        response = qa_chain.run(context_prompt)
+        
+        return response
+    except Exception as e:
+        raise Exception(f"Analysis generation failed: {str(e)}")
         
 
 def main():
@@ -339,7 +345,7 @@ def main():
             st.header("AI Insights")
             question = st.text_input(
                 "Ask about your energy usage:",
-                "What are the main patterns and saving opportunities?"
+                "what is energy consumed by aircomp in august 2018?"
             )
             if st.button("Generate Response"):
                 if question:
