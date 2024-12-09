@@ -11,8 +11,9 @@ from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from streamlit_option_menu import option_menu
 
+
 # Configuration
-GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+GOOGLE_API_KEY = "AIzaSyCppzDCO2eepEd3qLF7oWpI3Nkz4bW-TGc"
 genai.configure(api_key=GOOGLE_API_KEY)
 
 class DataLoader:
