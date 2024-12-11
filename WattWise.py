@@ -43,7 +43,7 @@ class DataLoader:
     def load_and_process_data():
         """"Load energy data from a CSV file, perform preprocessing, and return a cleaned DataFrame."""
         try:
-            df = pd.read_csv("../data/processed/energy_data_streamlit.csv") # Load data from the file
+            df = pd.read_csv("energy_data.csv") # Load data from the file
             
             # Extract and process datetime features
             df['date'] = pd.to_datetime(df['date'])
