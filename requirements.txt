@@ -10,3 +10,4 @@ langchain-google-genai==2.0.6
 faiss-cpu==1.7.4
 langchain-core==0.3.22
 langchain-community==0.3.10
+streamlit-option-menu==0.4.0
