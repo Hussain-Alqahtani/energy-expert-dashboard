@@ -1,3 +1,5 @@
+pip==24.3.1
+swig==4.2.1.post0
 langchain==0.3.10
 streamlit==1.40.2
 pandas==2.2.1
@@ -6,5 +8,4 @@ prophet==1.1.6
 google-generativeai==0.8.3
 langchain-google-genai==2.0.6
 faiss-cpu==1.7.4
-pip==24.3.1
 langchain-core==0.3.22
